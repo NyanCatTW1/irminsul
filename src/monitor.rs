@@ -124,9 +124,7 @@ impl Monitor {
     }
 
     fn handle_packet(&mut self, packet: Vec<u8>) {
-        let Some(GamePacket::Commands(commands)) =
-            self.sniffer.receive_packet(packet)
-        else {
+        let Some(GamePacket::Commands(commands)) = self.sniffer.receive_packet(packet) else {
             return;
         };
 

@@ -1,11 +1,10 @@
-use anyhow::Error;
 use std::fmt::{Debug, Display};
 
+use anyhow::Error;
 use futures::StreamExt;
 use futures::stream::FusedStream;
-use pktmon::Capture;
-use pktmon::Packet;
 use pktmon::filter::{PktMonFilter, TransportProtocol};
+use pktmon::{Capture, Packet};
 
 pub const PORT_RANGE: (u16, u16) = (22101, 22102);
 
@@ -13,10 +12,7 @@ pub const PORT_RANGE: (u16, u16) = (22101, 22102);
 #[allow(dead_code)]
 pub enum CaptureError {
     Filter(Error),
-    Capture {
-        has_captured: bool,
-        error: Error,
-    },
+    Capture { has_captured: bool, error: Error },
     CaptureClosed,
     ChannelClosed,
 }
@@ -25,7 +21,14 @@ impl Display for CaptureError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CaptureError::Filter(e) => write!(f, "Filter error: {}", e),
-            CaptureError::Capture { has_captured, error } => write!(f, "Capture error (has_captured = {}): {}", has_captured, error),
+            CaptureError::Capture {
+                has_captured,
+                error,
+            } => write!(
+                f,
+                "Capture error (has_captured = {}): {}",
+                has_captured, error
+            ),
             CaptureError::CaptureClosed => write!(f, "Capture closed"),
             CaptureError::ChannelClosed => write!(f, "Channel closed"),
         }
