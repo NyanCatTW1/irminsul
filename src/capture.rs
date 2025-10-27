@@ -1,3 +1,4 @@
+mod pcap_backend;
 #[cfg(windows)]
 mod pktmon_backend;
 
@@ -43,6 +44,7 @@ pub trait CaptureBackend: Send {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub enum BackendType {
     Pktmon,
     Pcap,
@@ -57,7 +59,7 @@ pub fn create_capture(backend: BackendType) -> Result<Box<dyn CaptureBackend>> {
     match backend {
         #[cfg(windows)]
         BackendType::Pktmon => Ok(Box::new(pktmon_backend::PktmonBackend::new()?)),
-        BackendType::Pcap => todo!(),
+        BackendType::Pcap => Ok(Box::new(pcap_backend::PcapBackend::new()?)),
         #[allow(unreachable_patterns)]
         _ => Err(CaptureError::Capture {
             has_captured: false,
