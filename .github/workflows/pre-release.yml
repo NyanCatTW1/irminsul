@@ -1,4 +1,4 @@
-name: Rust
+name: Create pre-release
 
 permissions: read-all
 on:
