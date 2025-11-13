@@ -1,7 +1,6 @@
 name: Create pre-release
 
-permissions:
-  contents: write
+permissions: read-all
 on:
   push:
     branches: [main]
@@ -104,6 +103,8 @@ jobs:
   release:
     name: Create Release
     needs: build
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
