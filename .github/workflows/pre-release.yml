@@ -1,6 +1,7 @@
 name: Create pre-release
 
-permissions: read-all
+permissions:
+  contents: write
 on:
   push:
     branches: [main]
