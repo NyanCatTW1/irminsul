@@ -109,6 +109,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -122,7 +124,7 @@ jobs:
           {
             echo 'commits<<EOF'
             echo 'Previous 5 commits:'
-            git log -5 --pretty=format:'- %h %s (%an)'
+            git log -5 --pretty=format:'- %h %s (@%aN)'
             echo
             echo 'EOF'
           } >> $GITHUB_OUTPUT
