@@ -1,31 +1,36 @@
 name: Rust
 
+permissions: read-all
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test_matrix:
+  build:
+    name: Build on ${{ matrix.os }} with features - ${{ matrix.rust_features }}
     strategy:
       matrix:
         include:
           - os: windows-latest
             artifact_name: ${{ github.event.repository.name }}-pktmon-only.exe
-            suffix: ".exe"
+            suffix: .exe
             rust_features: ""
+            name: win-pktmon-only.exe
           - os: windows-latest
             artifact_name: ${{ github.event.repository.name }}-pcap-and-pktmon.exe
-            suffix: ".exe"
-            rust_features: "pcap"
+            suffix: .exe
+            rust_features: pcap
+            name: win-pcap-and-pktmon.exe
           - os: ubuntu-22.04
             artifact_name: ${{ github.event.repository.name }}
             suffix: ""
-            rust_features: "pcap,static-libpcap"
+            rust_features: pcap,static-libpcap
+            name: linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -79,14 +84,77 @@ jobs:
       - run: cargo fmt --check
       - run: cargo test --release --no-default-features --features "${{ matrix.rust_features }}"
         env:
-            LIB: ${{ github.workspace }}/Lib/x64/
+          LIB: ${{ github.workspace }}/Lib/x64/
       - run: cargo clippy --release
       - run: cargo build --release --no-default-features --features "${{ matrix.rust_features }}"
         env:
-            LIB: ${{ github.workspace }}/Lib/x64/
+          LIB: ${{ github.workspace }}/Lib/x64/
       - if: ${{matrix.artifact_name}}
         name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: target/release/irminsul${{ matrix.suffix }}
+          path: target/release/irminsul-${{ matrix.name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Set outputs
+        id: vars
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          # Get last 5 commits
+          {
+            echo 'commits<<EOF'
+            echo 'Previous 5 commits:'
+            git log -5 --pretty=format:'- %h %s (%an)'
+            echo
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: ${{ steps.vars.outputs.date }} SHA:${{ steps.vars.outputs.sha_short }}
+          body: ${{ steps.vars.outputs.commits }}
+          draft: false
+          prerelease: true
+      - name: Upload Windows pktmon-only artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/irminsul-pktmon-only.exe/irminsul-win-pktmon-only.exe
+          asset_name: irminsul-win-pktmon-only.exe
+          asset_content_type: application/octet-stream
+      - name: Upload Windows pcap-and-pktmon artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/irminsul-pcap-and-pktmon.exe/irminsul-win-pcap-and-pktmon.exe
+          asset_name: irminsul-win-pcap-and-pktmon.exe
+          asset_content_type: application/octet-stream
+      - name: Upload Linux artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/irminsul/irminsul-linux
+          asset_name: irminsul-linux
+          asset_content_type: application/octet-stream
