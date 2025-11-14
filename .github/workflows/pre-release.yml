@@ -4,11 +4,29 @@ permissions: read-all
 on:
   push:
     branches: [main]
+    paths:
+      - src/**
+      - .github/workflows/**
+      - keys/**
+      - build.rs
+      - Cargo.lock
+      - Cargo.toml
   pull_request:
     branches: [main]
+    paths:
+      - src/**
+      - .github/workflows/**
+      - keys/**
+      - build.rs
+      - Cargo.lock
+      - Cargo.toml
 
 env:
   CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
