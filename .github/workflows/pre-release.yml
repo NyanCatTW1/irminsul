@@ -90,9 +90,16 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             mv target/release/irminsul.exe target/release/irminsul-${{ matrix.name }}
           else
+            chmod +x target/release/irminsul
             mv target/release/irminsul target/release/irminsul-${{ matrix.name }}
           fi
         shell: bash
+      - name: Compress Linux binary
+        if: runner.os == 'Linux'
+        run: |
+          cd target/release
+          tar -czf irminsul-${{ matrix.name }}.tar.gz irminsul-${{ matrix.name }}
+          mv irminsul-${{ matrix.name }}.tar.gz irminsul-${{ matrix.name }}
       - if: ${{matrix.artifact_name}}
         name: Upload release artifact
         uses: actions/upload-artifact@v4
@@ -164,5 +171,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./artifacts/irminsul/irminsul-linux
-          asset_name: irminsul-linux
-          asset_content_type: application/octet-stream
+          asset_name: irminsul-linux.tar.gz
+          asset_content_type: application/gzip
