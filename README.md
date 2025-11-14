@@ -30,7 +30,7 @@ Irminsul accepts a handful of command line options for advanced use cases:
 In it's current state Irminsul supports:
 
 - Incredibly fast capture of all Genshin Optimizer supported data
-  - Artifacts including "inactivated" rolls and reporting of initial values for rolls
+  - Artifacts including "unactivated" rolls and reporting of initial values for rolls
   - Weapons
   - Materials
   - Characters
