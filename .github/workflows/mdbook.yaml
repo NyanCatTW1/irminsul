@@ -5,20 +5,22 @@ on:
     branches:
       - docs
 
+permissions: read-all
+
 jobs:
   # Build job
   build:
     # Specify runner +  build & upload the static files as an artifact
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "latest"
+          mdbook-version: latest
 
       - run: mdbook build docs
 

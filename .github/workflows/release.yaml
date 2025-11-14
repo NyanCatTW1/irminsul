@@ -1,11 +1,13 @@
 name: Create Release
+
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
       nextVersion:
-        description: "Release Version"
+        description: Release Version
         required: true
-        default: "0.0.0"
+        default: 0.0.0
 
 jobs:
   build-windows:
@@ -67,4 +69,4 @@ jobs:
         with:
           tag: v${{inputs.nextVersion}}
           name: "v${{inputs.nextVersion}}"
-          artifacts: "irminsul.exe"
+          artifacts: irminsul.exe
