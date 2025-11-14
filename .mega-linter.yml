@@ -14,11 +14,23 @@ APPLY_FIXES: all
 # default
 # ENABLE_LINTERS:
 
+IGNORE_GITIGNORED_FILES: true
+
+FILTER_REGEX_EXCLUDE: target/*
+
+RUST_CLIPPY_PRE_COMMANDS:
+  - continue_if_failed: true
+    secured_env: true
+    command: apk add openssl-dev perl
+
+BASH_SHFMT_ARGUMENTS: [--indent=4]
+
+CLEAR_REPORT_FOLDER: true
+
 DISABLE:
   - COPYPASTE # Comment to enable checks of excessive copy-pastes
-  - SPELL # Comment to enable checks of spelling mistakes
+  # - SPELL # Comment to enable checks of spelling mistakes
 
 SHOW_ELAPSED_TIME: true
-
 # Uncomment if you want MegaLinter to detect errors but not block CI to pass
 # DISABLE_ERRORS: true
