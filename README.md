@@ -1,4 +1,4 @@
-![Screenshot](docs/src/images/main-window.webp)
+![Irminsul Main Window](docs/src/images/main-window.webp)
 
 # Resources
 
