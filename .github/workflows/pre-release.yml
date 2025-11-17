@@ -136,7 +136,9 @@ jobs:
           base_version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
           sha_short=$(git rev-parse --short HEAD)
           version="${base_version}-pre.${sha_short}"
+          timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           echo "version=${version}" >> $GITHUB_OUTPUT
+          echo "timestamp=${timestamp}" >> $GITHUB_OUTPUT
           echo "sha_short=${sha_short}" >> $GITHUB_OUTPUT
           {
             echo 'commits<<EOF'
@@ -150,7 +152,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.vars.outputs.version }}
-          name: v${{ steps.vars.outputs.version }}
+          name: ${{ steps.vars.outputs.timestamp }} - v${{ steps.vars.outputs.version }}
           body: ${{ steps.vars.outputs.commits }}
           prerelease: true
           files: |
