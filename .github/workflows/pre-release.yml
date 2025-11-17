@@ -138,9 +138,11 @@ jobs:
       - name: Generate release info
         id: vars
         run: |
-          echo "version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
-          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          base_version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          sha_short=$(git rev-parse --short HEAD)
+          version="${base_version}-pre.${sha_short}"
+          echo "version=${version}" >> $GITHUB_OUTPUT
+          echo "sha_short=${sha_short}" >> $GITHUB_OUTPUT
           {
             echo 'commits<<EOF'
             echo 'Previous 5 commits:'
@@ -152,7 +154,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.vars.outputs.version }}-pre.${{ github.run_number }}
+          tag_name: v${{ steps.vars.outputs.version }}
+          name: v${{ steps.vars.outputs.version }}
           body: ${{ steps.vars.outputs.commits }}
           prerelease: true
           files: |
