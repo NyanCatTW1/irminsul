@@ -9,64 +9,160 @@ on:
         required: true
         default: 0.0.0
 
+env:
+  CARGO_TERM_COLOR: always
+  RELEASE_BUILD: 1
+
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    permissions:
-      contents: write
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            features: ""
+            name: win-pktmon-only
+          - os: windows-latest
+            features: pcap
+            name: win-pcap-and-pktmon
+          - os: ubuntu-22.04
+            features: pcap,static-libpcap
+            name: linux
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - name: Setup Linux environment
+        if: runner.os == 'Linux'
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          echo "set man-db/auto-update false" | sudo debconf-communicate
+          sudo dpkg-reconfigure -f noninteractive man-db
+          sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get build-dep -y libpcap0.8
+
+      - name: Cache libpcap tarball
+        if: runner.os == 'Linux'
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - run: cargo install toml-cli
+          path: /tmp/libpcap-1.10.5.tar.gz
+          key: libpcap-1.10.5-tarball
 
-      - name: Update Cargo.toml with new version
-        # piping the output of toml-cli directly into the file will cause the file to be deleted before being read
-        # by toml-cli. excuse this workaround.
+      - name: Build libpcap
+        if: runner.os == 'Linux'
+        run: |
+          cd /tmp
+          [ ! -f libpcap-1.10.5.tar.gz ] && wget https://www.tcpdump.org/release/libpcap-1.10.5.tar.gz
+          echo "37ced90a19a302a7f32e458224a00c365c117905c2cd35ac544b6880a81488f0  libpcap-1.10.5.tar.gz" | sha256sum -c
+          tar xzf libpcap-1.10.5.tar.gz
+          cd libpcap-1.10.5
+          ./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --disable-dbus
+          make && sudo make install && sudo ldconfig
+
+      - name: Install Npcap SDK
+        if: runner.os == 'Windows'
+        run: |
+          curl https://npcap.com/dist/npcap-sdk-1.15.zip -o sdk.zip
+          unzip sdk.zip
+
+      - name: Install toml-cli
+        if: matrix.name == 'linux'
+        run: cargo install toml-cli
+
+      - name: Update version
+        if: matrix.name == 'linux'
+        shell: bash
         run: |
           toml set Cargo.toml package.version ${{inputs.nextVersion}} > Cargo.toml.new
           rm Cargo.toml
           mv Cargo.toml.new Cargo.toml
           cargo generate-lockfile
-      - run: cargo build --release
+
+      - name: Build
+        run: cargo build --release --no-default-features --features "${{ matrix.features }}"
+        env:
+          LIB: ${{ github.workspace }}/Lib/x64/
+          RELEASE_BUILD: "1"
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          cd target/release
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv irminsul.exe irminsul-${{ matrix.name }}.exe
+          else
+            chmod +x irminsul
+            tar -czf irminsul-${{ matrix.name }}.tar.gz irminsul
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irminsul-${{ matrix.name }}
+          path: target/release/irminsul-${{ matrix.name }}*
+
+      - name: Upload version files
+        if: matrix.name == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-files
+          path: |
+            Cargo.toml
+            Cargo.lock
+
+  release:
+    name: Create Release
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Download version files
+        uses: actions/download-artifact@v4
+        with:
+          name: version-files
+          path: ./
+
       - name: Push updated version
         run: |
           git config user.name "irminsul bot"
           git config user.email "irminsul.bot@users.noreply.github.com"
-          git add Cargo.toml
-          git add Cargo.lock
-          git commit -m "[skip ci] bump version to ${{inputs.nextVersion}}"
+          git add Cargo.toml Cargo.lock
+          git commit -m "[skip ci] bump version to ${{ inputs.nextVersion }}"
           git push origin main
-      - uses: actions/upload-artifact@v4
-        with:
-          name: irminsul
-          path: target/release/irminsul.exe
 
-  create-release:
-    runs-on: ubuntu-latest
-    needs: [build-windows]
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download release artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: irminsul
-          path: ./
-      - name: Create and push version tag
+      - name: Generate release info
+        id: vars
         run: |
-          git tag v${{inputs.nextVersion}}
-          git push origin --tags
-      - name: Create release
-        uses: ncipollo/release-action@v1
+          {
+            echo 'commits<<EOF'
+            echo 'Changes in this release:'
+            git log -10 --pretty=format:'- %h %s (@%aN)'
+            echo
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          tag: v${{inputs.nextVersion}}
-          name: "v${{inputs.nextVersion}}"
-          artifacts: irminsul.exe
+          tag_name: v${{ inputs.nextVersion }}
+          name: v${{ inputs.nextVersion }}
+          body: ${{ steps.vars.outputs.commits }}
+          prerelease: false
+          files: |
+            artifacts/irminsul-win-pktmon-only/irminsul-win-pktmon-only.exe
+            artifacts/irminsul-win-pcap-and-pktmon/irminsul-win-pcap-and-pktmon.exe
+            artifacts/irminsul-linux/irminsul-linux.tar.gz
