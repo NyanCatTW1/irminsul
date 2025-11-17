@@ -108,8 +108,7 @@ jobs:
             mv irminsul.exe irminsul-${{ matrix.name }}.exe
           else
             chmod +x irminsul
-            sudo setcap cap_net_raw=ep irminsul
-            tar -czf --xattrs irminsul-${{ matrix.name }}.tar.gz irminsul
+            tar -czf irminsul-${{ matrix.name }}.tar.gz irminsul
           fi
 
       - name: Upload artifact
