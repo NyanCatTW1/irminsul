@@ -1,6 +1,6 @@
+use std::process::Command;
 use std::{env, io};
 
-use git_version::git_version;
 use winresource::WindowsResource;
 
 fn main() -> io::Result<()> {
@@ -22,13 +22,30 @@ fn main() -> io::Result<()> {
     let full_version = if is_release {
         version.to_string()
     } else {
-        let git_hash = git_version!(args = ["--short", "--always"], fallback = "unknown");
+        // Get git hash at build.rs runtime
+        let git_hash = Command::new("git")
+            .args(["rev-parse", "--short=7", "HEAD"])
+            .output()
+            .ok()
+            .and_then(|output| {
+                if output.status.success() {
+                    String::from_utf8(output.stdout).ok()
+                } else {
+                    None
+                }
+            })
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+
         format!("{}-pre.{}", version, git_hash)
     };
 
     println!("cargo:rustc-env=APP_VERSION={}", full_version);
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-env-changed=RELEASE_BUILD");
+
+    // Write version to file for workflow to use
+    std::fs::write("target/APP_VERSION.txt", &full_version)?;
 
     Ok(())
 }
