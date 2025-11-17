@@ -30,29 +30,24 @@ concurrency:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} with features - ${{ matrix.rust_features }}
+    name: Build ${{ matrix.name }}
     strategy:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: ${{ github.event.repository.name }}-pktmon-only.exe
-            suffix: .exe
-            rust_features: ""
-            name: win-pktmon-only.exe
+            features: ""
+            name: win-pktmon-only
           - os: windows-latest
-            artifact_name: ${{ github.event.repository.name }}-pcap-and-pktmon.exe
-            suffix: .exe
-            rust_features: pcap
-            name: win-pcap-and-pktmon.exe
+            features: pcap
+            name: win-pcap-and-pktmon
           - os: ubuntu-22.04
-            artifact_name: ${{ github.event.repository.name }}
-            suffix: ""
-            rust_features: pcap,static-libpcap
+            features: pcap,static-libpcap
             name: linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache
+
+      - name: Cache Cargo
         uses: actions/cache@v4
         with:
           path: |
@@ -60,70 +55,68 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Disable man-db auto update (Linux) # will be fixed by 2025-11-14 https://github.com/actions/runner-images/issues/13213
+
+      - name: Setup Linux environment
         if: runner.os == 'Linux'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           echo "set man-db/auto-update false" | sudo debconf-communicate
           sudo dpkg-reconfigure -f noninteractive man-db
-      - name: Install libpcap build dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list && sudo apt-get update && sudo apt-get build-dep -y libpcap0.8
-      - name: Cache libpcap tarball (Linux)
+          sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get build-dep -y libpcap0.8
+
+      - name: Cache libpcap tarball
         if: runner.os == 'Linux'
         uses: actions/cache@v4
         with:
           path: /tmp/libpcap-1.10.5.tar.gz
           key: libpcap-1.10.5-tarball
-      - name: Build and install libpcap without dbus (Linux)
+
+      - name: Build libpcap
         if: runner.os == 'Linux'
         run: |
           cd /tmp
-          # Download if not cached
-          if [ ! -f libpcap-1.10.5.tar.gz ]; then
-            wget https://www.tcpdump.org/release/libpcap-1.10.5.tar.gz
-          fi
-          # Verify SHA256 checksum
+          [ ! -f libpcap-1.10.5.tar.gz ] && wget https://www.tcpdump.org/release/libpcap-1.10.5.tar.gz
           echo "37ced90a19a302a7f32e458224a00c365c117905c2cd35ac544b6880a81488f0  libpcap-1.10.5.tar.gz" | sha256sum -c
-          # Extract, build, and install
           tar xzf libpcap-1.10.5.tar.gz
           cd libpcap-1.10.5
           ./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --disable-dbus
-          make
-          sudo make install
-          sudo ldconfig
-      - name: Install Npcap SDK (Windows)
+          make && sudo make install && sudo ldconfig
+
+      - name: Install Npcap SDK
         if: runner.os == 'Windows'
         run: |
           curl https://npcap.com/dist/npcap-sdk-1.15.zip -o sdk.zip
           unzip sdk.zip
-      - run: cargo test --release --no-default-features --features "${{ matrix.rust_features }}"
+
+      - name: Test
+        run: cargo test --release --no-default-features --features "${{ matrix.features }}"
         env:
           LIB: ${{ github.workspace }}/Lib/x64/
-      - run: cargo build --release --no-default-features --features "${{ matrix.rust_features }}"
+
+      - name: Build
+        run: cargo build --release --no-default-features --features "${{ matrix.features }}"
         env:
           LIB: ${{ github.workspace }}/Lib/x64/
-      - name: Rename binary
-        run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            mv target/release/irminsul.exe target/release/irminsul-${{ matrix.name }}
-          else
-            chmod +x target/release/irminsul
-            mv target/release/irminsul target/release/irminsul-${{ matrix.name }}
-          fi
+
+      - name: Prepare artifact
         shell: bash
-      - name: Compress Linux binary
-        if: runner.os == 'Linux'
         run: |
           cd target/release
-          tar -czf irminsul-${{ matrix.name }}.tar.gz irminsul-${{ matrix.name }}
-          mv irminsul-${{ matrix.name }}.tar.gz irminsul-${{ matrix.name }}
-      - if: ${{matrix.artifact_name}}
-        name: Upload release artifact
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv irminsul.exe irminsul-${{ matrix.name }}.exe
+          else
+            chmod +x irminsul
+            sudo setcap cap_net_raw=ep irminsul
+            tar -czf irminsul-${{ matrix.name }}.tar.gz irminsul
+          fi
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: target/release/irminsul-${{ matrix.name }}
+          name: irminsul-${{ matrix.name }}
+          path: target/release/irminsul-${{ matrix.name }}*
 
   release:
     name: Create Release
@@ -136,19 +129,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 5
-      - name: Download build artifacts
+
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Set outputs
+
+      - name: Generate release info
         id: vars
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')" >> $GITHUB_OUTPUT
           echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-          # Extract version from Cargo.toml
-          version=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
-          echo "version=$version" >> $GITHUB_OUTPUT
-          # Get last 5 commits
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           {
             echo 'commits<<EOF'
             echo 'Previous 5 commits:'
@@ -156,41 +148,14 @@ jobs:
             echo
             echo 'EOF'
           } >> $GITHUB_OUTPUT
+
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.vars.outputs.version }}-pre.${{ github.run_number }}
-          release_name: ${{ steps.vars.outputs.date }} SHA:${{ steps.vars.outputs.sha_short }}
           body: ${{ steps.vars.outputs.commits }}
-          draft: false
           prerelease: true
-      - name: Upload Windows pktmon-only artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/irminsul-pktmon-only.exe/irminsul-win-pktmon-only.exe
-          asset_name: irminsul-win-pktmon-only.exe
-          asset_content_type: application/octet-stream
-      - name: Upload Windows pcap-and-pktmon artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/irminsul-pcap-and-pktmon.exe/irminsul-win-pcap-and-pktmon.exe
-          asset_name: irminsul-win-pcap-and-pktmon.exe
-          asset_content_type: application/octet-stream
-      - name: Upload Linux artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./artifacts/irminsul/irminsul-linux
-          asset_name: irminsul-linux.tar.gz
-          asset_content_type: application/gzip
+          files: |
+            artifacts/irminsul-win-pktmon-only/irminsul-win-pktmon-only.exe
+            artifacts/irminsul-win-pcap-and-pktmon/irminsul-win-pcap-and-pktmon.exe
+            artifacts/irminsul-linux/irminsul-linux.tar.gz
