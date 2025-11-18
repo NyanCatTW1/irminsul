@@ -11,16 +11,6 @@ on:
       - build.rs
       - Cargo.lock
       - Cargo.toml
-  pull_request:
-    branches: [main]
-    paths:
-      - src/**
-      - .github/workflows/pre-release.yml
-      - keys/**
-      - build.rs
-      - Cargo.lock
-      - Cargo.toml
-
 env:
   CARGO_TERM_COLOR: always
 
