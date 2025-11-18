@@ -19,7 +19,7 @@ IGNORE_GITIGNORED_FILES: true
 FILTER_REGEX_EXCLUDE: target/*
 
 RUST_CLIPPY_PRE_COMMANDS:
-  - continue_if_failed: true
+  - continue_if_failed: false
     secured_env: true
     command: apk add openssl-dev perl
 
