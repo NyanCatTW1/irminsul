@@ -73,11 +73,9 @@ jobs:
           unzip sdk.zip
 
       - name: Install toml-cli
-        if: matrix.name == 'linux'
         run: cargo install toml-cli
 
       - name: Update version
-        if: matrix.name == 'linux'
         shell: bash
         run: |
           toml set Cargo.toml package.version ${{inputs.nextVersion}} > Cargo.toml.new
