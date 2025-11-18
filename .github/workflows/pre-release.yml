@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - src/**
-      - .github/workflows/**
+      - .github/workflows/pre-release.yml
       - keys/**
       - build.rs
       - Cargo.lock
@@ -15,7 +15,7 @@ on:
     branches: [main]
     paths:
       - src/**
-      - .github/workflows/**
+      - .github/workflows/pre-release.yml
       - keys/**
       - build.rs
       - Cargo.lock
