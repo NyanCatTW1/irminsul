@@ -68,9 +68,17 @@ jobs:
       - name: Install Npcap SDK
         if: runner.os == 'Windows'
         run: |
-          curl -L https://npcap.com/dist/npcap-sdk-1.15.zip -o sdk.zip
-          echo "52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f *sdk.zip" | sha256sum -c
-          unzip sdk.zip
+          $expectedHash = "52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f"
+          $outputFile = "sdk.zip"
+          Invoke-WebRequest -Uri https://npcap.com/dist/npcap-sdk-1.15.zip -OutFile $outputFile
+          $actualHash = (Get-FileHash -Path $outputFile -Algorithm SHA256).Hash.ToLower()
+          if ($actualHash -ne $expectedHash) {
+              Write-Error "SHA256 hash mismatch! Expected: $expectedHash, Actual: $actualHash"
+              exit 1
+          } else {
+              Write-Output "SHA256 hash verified successfully."
+          }
+          Expand-Archive -Path $outputFile -DestinationPath . -Force
 
       - name: Install toml-cli
         run: cargo install toml-cli
