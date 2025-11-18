@@ -1,11 +1,6 @@
-![Irminsul Main Window](docs/src/images/main-window.webp)
+# ![Irminsul Main Window](docs/src/images/main-window.webp)
 
-# Resources
-
-- [Docs](https://konkers.github.io/irminsul)
-- [Discord](https://discord.gg/aQqdZPHEpP)
-
-# Introduction
+## Introduction
 
 Irminsul is a utility to extract data from Genshin Impact and export it for use with [Genshin Optimizer](https://frzyc.github.io/genshin-optimizer/) and web sites, applications, and utilities that use the [GOOD](https://frzyc.github.io/genshin-optimizer/#/doc) data format.
 
@@ -43,6 +38,11 @@ Planned features include:
 - Achievement export
 - Wish history export
 - Real time data updates while game is running
+
+## Resources
+
+- [Docs](https://konkers.github.io/irminsul)
+- [Discord](https://discord.gg/aQqdZPHEpP)
 
 ## Thanks
 

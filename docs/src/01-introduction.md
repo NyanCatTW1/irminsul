@@ -1,6 +1,6 @@
-![Screenshot](images/main-window.webp)
+# ![Irminsul Main Window](images/main-window.webp)
 
-# Introduction
+## Introduction
 
 Irminsul is a utility to extract data from Genshin Impact and export it for use with [Genshin Optimizer](https://frzyc.github.io/genshin-optimizer/) and web sites, applications, and utilities that use the [GOOD](https://frzyc.github.io/genshin-optimizer/#/doc) data format.
 
