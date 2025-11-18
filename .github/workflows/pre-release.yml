@@ -73,6 +73,7 @@ jobs:
       - name: Install Npcap SDK
         if: runner.os == 'Windows'
         run: |
+          #shellcheck disable=all
           $expectedHash = "52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f"
           $outputFile = "sdk.zip"
           Invoke-WebRequest -Uri https://npcap.com/dist/npcap-sdk-1.15.zip -OutFile $outputFile
