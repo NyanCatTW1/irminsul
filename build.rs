@@ -44,8 +44,5 @@ fn main() -> io::Result<()> {
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-env-changed=RELEASE_BUILD");
 
-    // Write version to file for workflow to use
-    std::fs::write("target/APP_VERSION.txt", &full_version)?;
-
     Ok(())
 }
