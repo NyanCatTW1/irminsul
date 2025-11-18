@@ -1,0 +1,34 @@
+self-hosted-runner:
+  # Labels of self-hosted runner in array of strings.
+  labels: []
+
+# Configuration variables in array of strings defined in your repository or
+# organization. `null` means disabling configuration variables check.
+# Empty array means no configuration variable is allowed.
+config-variables: null
+
+# Configuration for file paths. The keys are glob patterns to match to file
+# paths relative to the repository root. The values are the configurations for
+# the file paths. Note that the path separator is always '/'.
+# The following configurations are available.
+#
+# "ignore" is an array of regular expression patterns. Matched error messages
+# are ignored. This is similar to the "-ignore" command line option.
+paths:
+  .github/workflows/pre-release.yml:
+    ignore:
+      - "shellcheck reported issue in this script: SC2086:info:4:75:.+"
+      - "shellcheck reported issue in this script: SC1066:error:5:1:.+"
+      - "shellcheck reported issue in this script: SC2283:error:5:13:.+"
+      - "shellcheck reported issue in this script: SC1036:error:5:15:.+"
+      - "shellcheck reported issue in this script: SC1088:error:5:15:.+"
+      - "shellcheck reported issue in this script: SC2283:error:3:13:.+"
+  .github/workflows/release.yaml:
+    ignore:
+      - "shellcheck reported issue in this script: SC2283:error:3:13:.+"
+      - "shellcheck reported issue in this script: SC2086:info:4:75:.+"
+      - "shellcheck reported issue in this script: SC1066:error:5:1:.+"
+      - "shellcheck reported issue in this script: SC2283:error:5:13:.+"
+      - "shellcheck reported issue in this script: SC1036:error:5:15:.+"
+      - "shellcheck reported issue in this script: SC1088:error:5:15:.+"
+      - "shellcheck reported issue in this script: SC2086:info:7:6:.+"

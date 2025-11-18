@@ -1,15 +1,13 @@
-![Screenshot](docs/src/images/main-window.webp)
+# ![Irminsul Main Window](docs/src/images/main-window.webp)
 
-# Resources
-
-- [Docs](https://konkers.github.io/irminsul)
-- [Discord](https://discord.gg/aQqdZPHEpP)
-
-# Introduction
+## Introduction
 
 Irminsul is a utility to extract data from Genshin Impact and export it for use with [Genshin Optimizer](https://frzyc.github.io/genshin-optimizer/) and web sites, applications, and utilities that use the [GOOD](https://frzyc.github.io/genshin-optimizer/#/doc) data format.
 
-Irminsul utilizes packet capture instead of the common optical character recognition (OCR) that other [scanners](https://frzyc.github.io/genshin-optimizer/#/scanner) use. This allows it to be much quicker in exchange for 1. needing to run with admin/root privaleges (for the packet capture) and 2. needing to be run when genshin starts to observe the handshake with the server.
+Irminsul utilizes packet capture instead of the common optical character recognition (OCR) that other [scanners](https://frzyc.github.io/genshin-optimizer/#/scanner) use. This allows it to be much quicker in exchange for:
+
+1. Needing to run with `CAP_NET_RAW`/admin/root privileges (for the packet capture)
+2. Needing to be run when Genshin starts to observe the handshake with the server.
 
 ## Dependencies
 
@@ -41,9 +39,14 @@ Planned features include:
 - Wish history export
 - Real time data updates while game is running
 
+## Resources
+
+- [Docs](https://konkers.github.io/irminsul)
+- [Discord](https://discord.gg/aQqdZPHEpP)
+
 ## Thanks
 
-Irmunsil is built upon the work of many others.
+Irminsul is built upon the work of many others.
 
 - [PJK136](https://github.com/PJK136) whose work on a [fork of `stardb-exporter`](https://github.com/PJK136/stardb-exporter) provided the main inspiration for Irminsul's development.
 - [juliuskreutz](https://github.com/juliuskreutz) whose [`stardb-exporter`](https://github.com/juliuskreutz/stardb-exporter) provided the foundation for PJK136's work as well as providing some examples for how to wrangle [`egui`](https://github.com/emilk/egui).

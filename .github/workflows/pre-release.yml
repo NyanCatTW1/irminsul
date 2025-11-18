@@ -1,17 +1,22 @@
-name: Create Release
+name: Create Pre-release
 
 permissions: read-all
 on:
-  workflow_dispatch:
-    inputs:
-      nextVersion:
-        description: Release Version
-        required: true
-        default: 0.0.0
-
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - .github/workflows/pre-release.yml
+      - keys/**
+      - build.rs
+      - Cargo.lock
+      - Cargo.toml
 env:
   CARGO_TERM_COLOR: always
-  RELEASE_BUILD: 1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -81,22 +86,15 @@ jobs:
           }
           Expand-Archive -Path $outputFile -DestinationPath . -Force
 
-      - name: Install toml-cli
-        run: cargo install toml-cli
-
-      - name: Update version
-        shell: bash
-        run: |
-          toml set Cargo.toml package.version ${{inputs.nextVersion}} > Cargo.toml.new
-          rm Cargo.toml
-          mv Cargo.toml.new Cargo.toml
-          cargo generate-lockfile
+      - name: Test
+        run: cargo test --release --no-default-features --features "${{ matrix.features }}"
+        env:
+          LIB: ${{ github.workspace }}/Lib/x64/
 
       - name: Build
         run: cargo build --release --no-default-features --features "${{ matrix.features }}"
         env:
           LIB: ${{ github.workspace }}/Lib/x64/
-          RELEASE_BUILD: "1"
 
       - name: Prepare artifact
         shell: bash
@@ -115,61 +113,50 @@ jobs:
           name: irminsul-${{ matrix.name }}
           path: target/release/irminsul-${{ matrix.name }}*
 
-      - name: Upload version files
-        if: matrix.name == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: version-files
-          path: |
-            Cargo.toml
-            Cargo.lock
-
   release:
     name: Create Release
     needs: build
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
 
       - name: Download artifacts
         uses: actions/download-artifact@v4.1.3
         with:
           path: artifacts
 
-      - name: Download version files
-        uses: actions/download-artifact@v4.1.3
-        with:
-          name: version-files
-          path: ./
-
-      - name: Push updated version
-        run: |
-          git config user.name "irminsul bot"
-          git config user.email "irminsul.bot@users.noreply.github.com"
-          git add Cargo.toml Cargo.lock
-          git commit -m "[skip ci] bump version to ${{ inputs.nextVersion }}"
-          git push origin main
-
       - name: Generate release info
         id: vars
         run: |
+          base_version=$(grep -m1 '^version = ' Cargo.toml)
+          base_version=${base_version#version = \"}
+          base_version=${base_version%\"}
+          sha_short=$(git rev-parse --short HEAD)
+          version="${base_version}-pre.${sha_short}"
+          timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           {
+            echo "version=${version}"
+            echo "timestamp=${timestamp}"
+            echo "sha_short=${sha_short}"
             echo 'commits<<EOF'
-            echo 'Changes in this release:'
-            git log -10 --pretty=format:'- %h %s (@%aN)'
+            echo 'Previous 5 commits:'
+            git log -5 --pretty=format:'- %h %s (@%aN)'
             echo
             echo 'EOF'
-          } >> $GITHUB_OUTPUT
+          } >>"${GITHUB_OUTPUT}"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.nextVersion }}
-          name: v${{ inputs.nextVersion }}
+          tag_name: v${{ steps.vars.outputs.version }}
+          name: ${{ steps.vars.outputs.timestamp }} - v${{ steps.vars.outputs.version }}
           body: ${{ steps.vars.outputs.commits }}
-          prerelease: false
+          prerelease: true
           files: |
             artifacts/irminsul-win-pktmon-only/irminsul-win-pktmon-only.exe
             artifacts/irminsul-win-pcap-and-pktmon/irminsul-win-pcap-and-pktmon.exe

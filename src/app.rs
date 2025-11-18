@@ -341,7 +341,7 @@ impl eframe::App for IrminsulApp {
                     if button.clicked() {
                         self.bug_report_open = true;
                     }
-                    ui.label(env!("CARGO_PKG_VERSION").to_string());
+                    ui.label(env!("APP_VERSION").to_string());
                     egui::warn_if_debug_build(ui);
                 });
             });
