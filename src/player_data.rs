@@ -351,4 +351,13 @@ impl PlayerData {
     pub fn has_achievements(&self) -> bool {
         !self.achievements.is_empty()
     }
+
+    pub fn check_num_characters(&self, characters: &[AvatarInfo]) -> u32 {
+        characters.iter().fold(0, |agg, character| {
+            if character.avatar_type != 1 {
+                return agg;
+            }
+            return agg + 1;
+        })
+    }
 }

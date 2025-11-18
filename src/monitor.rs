@@ -172,11 +172,16 @@ impl Monitor {
                     tracing::info!("Ignoring empty avatar packet, already have data");
                 } else if avatars.is_empty() {
                     tracing::info!("Ignoring empty avatar packet");
-                } else {
+                } else if self.player_data.check_num_characters(&avatars) >= 6 {
                     tracing::info!("Found avatar packet with {} avatars", avatars.len());
                     self.player_data.process_characters(&avatars);
                     updated.characters_updated = Some(Instant::now());
                     has_new_data = true;
+                } else {
+                    tracing::info!(
+                        "Packet with {} avatars determined to be false positive. Discarded.",
+                        avatars.len()
+                    );
                 }
             } else if let Some(achievements) = matches_achievement_packet(&command) {
                 // Ignore empty packets if we already have data
