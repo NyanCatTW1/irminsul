@@ -83,7 +83,8 @@ jobs:
       - name: Install Npcap SDK
         if: runner.os == 'Windows'
         run: |
-          curl https://npcap.com/dist/npcap-sdk-1.15.zip -o sdk.zip
+          curl -L https://npcap.com/dist/npcap-sdk-1.15.zip -o sdk.zip
+          echo "52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f *sdk.zip" | sha256sum -c
           unzip sdk.zip
 
       - name: Test
