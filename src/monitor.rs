@@ -152,7 +152,17 @@ impl Monitor {
                 //6 guaranteed different free characters by AR18
                 {
                     self.player_data.process_items(&items);
-                    tracing::info!("Found item packet with {} items", items.len());
+                    // Print first 100 items
+                    tracing::info!(
+                        "Found item packet with {} items:\n{}",
+                        items.len(),
+                        items
+                            .iter()
+                            .take(100)
+                            .map(|item| format!("{:?}", item))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
                     updated.items_updated = Some(Instant::now());
                     has_new_data = true;
                 } else {
