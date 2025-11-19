@@ -18,6 +18,7 @@ fn main() -> io::Result<()> {
     // Set version with git hash for pre-releases
     let version = env!("CARGO_PKG_VERSION");
     let is_release = env::var("RELEASE_BUILD").is_ok();
+    let is_debug = env::var("PROFILE").map(|p| p == "debug").unwrap_or(false);
 
     let full_version = if is_release {
         version.to_string()
@@ -37,7 +38,11 @@ fn main() -> io::Result<()> {
             .map(|s| s.trim().to_string())
             .unwrap_or_else(|| "unknown".to_string());
 
-        format!("{}-pre.{}", version, git_hash)
+        if is_debug {
+            format!("{}-debug.{}", version, git_hash)
+        } else {
+            format!("{}-pre.{}", version, git_hash)
+        }
     };
 
     println!("cargo:rustc-env=APP_VERSION={}", full_version);

@@ -1,0 +1,156 @@
+name: Create Debug Build
+
+permissions: read-all
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            features: ""
+            name: win-pktmon-only
+          - os: windows-latest
+            features: pcap
+            name: win-pcap-and-pktmon
+          - os: ubuntu-22.04
+            features: pcap,static-libpcap
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - name: Setup Linux environment
+        if: runner.os == 'Linux'
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          echo "set man-db/auto-update false" | sudo debconf-communicate
+          sudo dpkg-reconfigure -f noninteractive man-db
+          sudo sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
+          sudo apt-get update
+          sudo apt-get build-dep -y libpcap0.8
+
+      - name: Cache libpcap tarball
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: /tmp/libpcap-1.10.5.tar.gz
+          key: libpcap-1.10.5-tarball
+
+      - name: Build libpcap
+        if: runner.os == 'Linux'
+        run: |
+          cd /tmp
+          [ ! -f libpcap-1.10.5.tar.gz ] && wget https://www.tcpdump.org/release/libpcap-1.10.5.tar.gz
+          echo "37ced90a19a302a7f32e458224a00c365c117905c2cd35ac544b6880a81488f0  libpcap-1.10.5.tar.gz" | sha256sum -c
+          tar xzf libpcap-1.10.5.tar.gz
+          cd libpcap-1.10.5
+          ./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --disable-dbus
+          make && sudo make install && sudo ldconfig
+
+      - name: Install Npcap SDK
+        if: runner.os == 'Windows'
+        run: |
+          #shellcheck disable=all
+          $expectedHash = "52c7b9fb4abee3ad9fe739bb545c3efe77b731c8e127122bdf328eafdae3ed4f"
+          $outputFile = "sdk.zip"
+          Invoke-WebRequest -Uri https://npcap.com/dist/npcap-sdk-1.15.zip -OutFile $outputFile
+          $actualHash = (Get-FileHash -Path $outputFile -Algorithm SHA256).Hash.ToLower()
+          if ($actualHash -ne $expectedHash) {
+              Write-Error "SHA256 hash mismatch! Expected: $expectedHash, Actual: $actualHash"
+              exit 1
+          } else {
+              Write-Output "SHA256 hash verified successfully."
+          }
+          Expand-Archive -Path $outputFile -DestinationPath . -Force
+
+      - name: Build
+        run: cargo build --no-default-features --features "${{ matrix.features }}"
+        env:
+          LIB: ${{ github.workspace }}/Lib/x64/
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          cd target/debug
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            mv irminsul.exe irminsul-debug-${{ matrix.name }}.exe
+          else
+            chmod +x irminsul
+            mv irminsul irminsul-debug
+            tar -czf irminsul-debug-${{ matrix.name }}.tar.gz irminsul-debug
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irminsul-${{ matrix.name }}
+          path: target/debug/irminsul-debug-${{ matrix.name }}*
+
+      - name: Upload version files
+        if: matrix.name == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-files
+          path: |
+            Cargo.toml
+            Cargo.lock
+
+  release:
+    name: Create Release
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4.1.3
+        with:
+          path: artifacts
+
+      - name: Generate release info
+        id: vars
+        run: |
+          base_version=$(grep -m1 '^version = ' Cargo.toml)
+          base_version=${base_version#version = \"}
+          base_version=${base_version%\"}
+          sha_short=$(git rev-parse --short HEAD)
+          version="${base_version}-debug.${sha_short}"
+          timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          {
+            echo "version=${version}"
+            echo "timestamp=${timestamp}"
+            echo "sha_short=${sha_short}"
+            echo 'commits<<EOF'
+            echo 'Previous 5 commits:'
+            git log -5 --pretty=format:'- %h %s (@%aN)'
+            echo
+            echo 'EOF'
+          } >>"${GITHUB_OUTPUT}"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.vars.outputs.version }}
+          name: ${{ steps.vars.outputs.timestamp }} - v${{ steps.vars.outputs.version }}
+          body: ${{ steps.vars.outputs.commits }}
+          prerelease: true
+          files: |
+            artifacts/irminsul-win-pktmon-only/irminsul-debug-win-pktmon-only.exe
+            artifacts/irminsul-win-pcap-and-pktmon/irminsul-debug-win-pcap-and-pktmon.exe
+            artifacts/irminsul-linux/irminsul-debug-linux.tar.gz
