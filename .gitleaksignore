@@ -1,4 +1,5 @@
 8d1ee39cf997d4484807b0b3b5ee84692650910a:.github/workflows/release.yaml:generic-api-key:55
 3b61d4478a133998e8d4796bd296536620f58a12:.github/workflows/lint-and-format.yaml:generic-api-key:38
 2ef46b8670654673f580b5001612b80716a3fbd1:.github/workflows/rust.yml:generic-api-key:50
+ededf262dec9dc57425a306354861f165e637b83:.github/workflows/rust.yml:generic-api-key:54
 28090285d7980323e5a298f953ddecea279cb639:.github/workflows/debug-pre-release.yaml:generic-api-key:48
