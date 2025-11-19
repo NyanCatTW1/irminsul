@@ -15,6 +15,22 @@ pub fn check_for_new_version() -> Result<Option<Release>> {
     let repo_owner = option_env!("GITHUB_REPO_OWNER").unwrap_or("konkers");
     let repo_name = option_env!("GITHUB_REPO_NAME").unwrap_or("irminsul");
 
+    let current_version = self_update::cargo_crate_version!();
+
+    // Skip update check for pre-release or debug builds
+    if current_version.contains("pre") || current_version.contains("debug") {
+        tracing::info!(
+            "Skipping update check for {} build (version: {})",
+            if current_version.contains("debug") {
+                "debug"
+            } else {
+                "pre-release"
+            },
+            current_version
+        );
+        return Ok(None);
+    }
+
     tracing::info!("Checking for updates from {}/{}", repo_owner, repo_name);
 
     // This needs to be outside of an async context otherwise it panics.
@@ -33,7 +49,7 @@ pub fn check_for_new_version() -> Result<Option<Release>> {
 
     // Assume the first release is the latest.
     let release = releases[0].clone();
-    if release.version == self_update::cargo_crate_version!() {
+    if release.version == current_version {
         tracing::info!(
             "{} is current, continuing with app startup",
             release.version
@@ -41,11 +57,7 @@ pub fn check_for_new_version() -> Result<Option<Release>> {
         return Ok(None);
     }
 
-    tracing::info!(
-        "Found update {} -> {}",
-        self_update::cargo_crate_version!(),
-        release.version
-    );
+    tracing::info!("Found update {} -> {}", current_version, release.version);
 
     Ok(Some(release))
 }
