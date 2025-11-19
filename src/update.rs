@@ -11,11 +11,17 @@ use tokio::sync::{mpsc, watch};
 use crate::{AppState, Message, State};
 
 pub fn check_for_new_version() -> Result<Option<Release>> {
+    // Get repository info from build-time environment variables
+    let repo_owner = option_env!("GITHUB_REPO_OWNER").unwrap_or("konkers");
+    let repo_name = option_env!("GITHUB_REPO_NAME").unwrap_or("irminsul");
+
+    tracing::info!("Checking for updates from {}/{}", repo_owner, repo_name);
+
     // This needs to be outside of an async context otherwise it panics.
     let releases = thread::spawn(move || -> Result<Vec<Release>> {
         let releases = self_update::backends::github::ReleaseList::configure()
-            .repo_owner("konkers")
-            .repo_name("irminsul")
+            .repo_owner(repo_owner)
+            .repo_name(repo_name)
             .build()?
             .fetch()?;
         Ok(releases)

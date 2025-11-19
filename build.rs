@@ -49,5 +49,35 @@ fn main() -> io::Result<()> {
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-env-changed=RELEASE_BUILD");
 
+    // Extract GitHub repository info from git remote
+    let repo_info = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                String::from_utf8(output.stdout).ok()
+            } else {
+                None
+            }
+        })
+        .and_then(|url| {
+            let url = url.trim();
+            // Handle both HTTPS and SSH URLs
+            // HTTPS: https://github.com/owner/repo.git
+            // SSH: git@github.com:owner/repo.git
+            url.strip_prefix("https://github.com/")
+                .or_else(|| url.strip_prefix("git@github.com:"))
+                .map(|rest| rest.trim_end_matches(".git").to_string())
+        });
+
+    if let Some(repo) = repo_info {
+        let parts: Vec<&str> = repo.split('/').collect();
+        if parts.len() == 2 {
+            println!("cargo:rustc-env=GITHUB_REPO_OWNER={}", parts[0]);
+            println!("cargo:rustc-env=GITHUB_REPO_NAME={}", parts[1]);
+        }
+    }
+
     Ok(())
 }
