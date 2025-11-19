@@ -15,7 +15,7 @@ pub fn check_for_new_version() -> Result<Option<Release>> {
     let repo_owner = option_env!("GITHUB_REPO_OWNER").unwrap_or("konkers");
     let repo_name = option_env!("GITHUB_REPO_NAME").unwrap_or("irminsul");
 
-    let current_version = self_update::cargo_crate_version!();
+    let current_version = env!("APP_VERSION");
 
     // Skip update check for pre-release or debug builds
     if current_version.contains("pre") || current_version.contains("debug") {
