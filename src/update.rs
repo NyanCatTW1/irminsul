@@ -40,12 +40,24 @@ pub fn check_for_new_version() -> Result<Option<Release>> {
             .repo_name(repo_name)
             .build()?
             .fetch()?;
-        Ok(releases)
+
+        // Filter out pre-releases and debug releases based on version string
+        let stable_releases: Vec<Release> = releases
+            .into_iter()
+            .filter(|r| !r.version.contains("pre") && !r.version.contains("debug"))
+            .collect();
+
+        Ok(stable_releases)
     })
     .join();
     let releases = releases
         .map_err(|_| anyhow!("error joining update thread"))?
         .context("error fetching releases")?;
+
+    if releases.is_empty() {
+        tracing::info!("No stable releases found");
+        return Ok(None);
+    }
 
     // Assume the first release is the latest.
     let release = releases[0].clone();
