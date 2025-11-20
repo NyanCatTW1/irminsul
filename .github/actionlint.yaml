@@ -32,3 +32,11 @@ paths:
       - "shellcheck reported issue in this script: SC1036:error:5:15:.+"
       - "shellcheck reported issue in this script: SC1088:error:5:15:.+"
       - "shellcheck reported issue in this script: SC2086:info:7:6:.+"
+  .github/workflows/debug-pre-release.yaml:
+    ignore:
+      - "shellcheck reported issue in this script: SC2283:error:3:13:.+"
+      - "shellcheck reported issue in this script: SC2086:info:4:75:.+"
+      - "shellcheck reported issue in this script: SC1066:error:5:1:.+"
+      - "shellcheck reported issue in this script: SC2283:error:5:13:.+"
+      - "shellcheck reported issue in this script: SC1036:error:5:15:.+"
+      - "shellcheck reported issue in this script: SC1088:error:5:15:.+"
