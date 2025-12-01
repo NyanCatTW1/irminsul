@@ -339,4 +339,16 @@ impl PlayerData {
             return agg + 1;
         })
     }
+
+    pub fn has_items(&self) -> bool {
+        !self.items.is_empty()
+    }
+
+    pub fn has_characters(&self) -> bool {
+        !self.characters.is_empty()
+    }
+
+    pub fn has_achievements(&self) -> bool {
+        !self.achievements.is_empty()
+    }
 }

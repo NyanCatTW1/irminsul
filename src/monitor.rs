@@ -148,7 +148,12 @@ impl Monitor {
                 }
             }
             if let Some(items) = matches_item_packet(&command) {
-                if self.player_data.check_num_weapons(&items) >= 6
+                // Ignore empty packets if we already have data
+                if items.is_empty() && self.player_data.has_items() {
+                    tracing::info!("Ignoring empty item packet, already have data");
+                } else if items.is_empty() {
+                    tracing::info!("Ignoring empty item packet");
+                } else if self.player_data.check_num_weapons(&items) >= 6
                 //6 guaranteed different free characters by AR18
                 {
                     self.player_data.process_items(&items);
@@ -162,18 +167,32 @@ impl Monitor {
                     );
                 }
             } else if let Some(avatars) = matches_avatar_packet(&command) {
-                tracing::info!("Found avatar packet with {} avatars", avatars.len());
-                self.player_data.process_characters(&avatars);
-                updated.characters_updated = Some(Instant::now());
-                has_new_data = true;
+                // Ignore empty packets if we already have data
+                if avatars.is_empty() && self.player_data.has_characters() {
+                    tracing::info!("Ignoring empty avatar packet, already have data");
+                } else if avatars.is_empty() {
+                    tracing::info!("Ignoring empty avatar packet");
+                } else {
+                    tracing::info!("Found avatar packet with {} avatars", avatars.len());
+                    self.player_data.process_characters(&avatars);
+                    updated.characters_updated = Some(Instant::now());
+                    has_new_data = true;
+                }
             } else if let Some(achievements) = matches_achievement_packet(&command) {
-                tracing::info!(
-                    "Found achievement packet with {} achievements",
-                    achievements.len()
-                );
-                self.player_data.process_achievements(&achievements);
-                updated.achievements_updated = Some(Instant::now());
-                has_new_data = true;
+                // Ignore empty packets if we already have data
+                if achievements.is_empty() && self.player_data.has_achievements() {
+                    tracing::info!("Ignoring empty achievement packet, already have data");
+                } else if achievements.is_empty() {
+                    tracing::info!("Ignoring empty achievement packet");
+                } else {
+                    tracing::info!(
+                        "Found achievement packet with {} achievements",
+                        achievements.len()
+                    );
+                    self.player_data.process_achievements(&achievements);
+                    updated.achievements_updated = Some(Instant::now());
+                    has_new_data = true;
+                }
             }
         }
 
