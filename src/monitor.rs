@@ -147,6 +147,7 @@ impl Monitor {
                     tracing::info!("error logging command {e}");
                 }
             }
+
             if let Some(items) = matches_item_packet(&command) {
                 // Ignore empty packets if we already have data
                 if items.is_empty() && self.player_data.has_items() {
